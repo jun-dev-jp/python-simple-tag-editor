@@ -24,17 +24,27 @@ It provides a unified, intuitive API to read and edit metadata tags across **MP3
 
 ---
 
-## Installation & Requirements
+## Installation & Setup
 
-- Python 3.14+
-- Dependency: `mutagen`
+### Install from GitHub
 
 ```bash
 # Using uv
-uv add python-simple-tag-editor
+uv add git+https://github.com/junpiyo/python-simple-tag-editor.git
 
 # Or using pip
-pip install python-simple-tag-editor
+pip install git+https://github.com/junpiyo/python-simple-tag-editor.git
+```
+
+### Local Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/junpiyo/python-simple-tag-editor.git
+cd python-simple-tag-editor
+
+# Set up virtual environment and install dependencies with uv
+uv sync
 ```
 
 ---
