@@ -29,18 +29,25 @@ It provides a unified, intuitive API to read and edit metadata tags across **MP3
 ### Install from GitHub
 
 ```bash
-# Using uv
+# Using uv (HTTPS or SSH)
 uv add git+https://github.com/junpiyo/python-simple-tag-editor.git
+# or
+uv add "git+ssh://git@github.com/junpiyo/python-simple-tag-editor.git"
 
-# Or using pip
+# Using pip (HTTPS or SSH)
 pip install git+https://github.com/junpiyo/python-simple-tag-editor.git
+# or
+pip install "git+ssh://git@github.com/junpiyo/python-simple-tag-editor.git"
 ```
 
 ### Local Development Setup
 
 ```bash
-# Clone the repository
+# Clone the repository (HTTPS or SSH)
 git clone https://github.com/junpiyo/python-simple-tag-editor.git
+# or
+git clone git@github.com:junpiyo/python-simple-tag-editor.git
+
 cd python-simple-tag-editor
 
 # Set up virtual environment and install dependencies with uv
