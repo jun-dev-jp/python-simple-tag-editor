@@ -7,6 +7,7 @@ import argparse
 import sys
 import textwrap
 from pathlib import Path
+from typing import cast
 
 # Ensure src is in sys.path when running from examples/ directory or project root
 script_dir = Path(__file__).resolve().parent
@@ -68,8 +69,8 @@ def main() -> int:
     )
 
     args = parser.parse_args()
-
-    display_tags(args.path)
+    file_path = cast(Path, args.path)
+    display_tags(file_path)
 
     return 0
 

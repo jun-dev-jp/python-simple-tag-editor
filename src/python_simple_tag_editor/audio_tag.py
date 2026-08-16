@@ -1,14 +1,33 @@
-"""audio_tag.py"""
+"""Core data model and utilities for audio metadata tags."""
+
+from __future__ import annotations
 
 import base64
 import logging
 from dataclasses import dataclass
+from typing import Final
 
 logger = logging.getLogger(__name__)
+
+SUPPORTED_ALBUM_ART_MIME_TYPES: Final[tuple[str, ...]] = (
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+)
+
+__all__ = [
+    "SUPPORTED_ALBUM_ART_MIME_TYPES",
+    "SimpleAudioTag",
+    "b64decode",
+    "b64encode",
+    "parse_base64_encoded_data_uri",
+]
 
 
 @dataclass(frozen=True)
 class SimpleAudioTag:
+    """Immutable representation of audio file metadata tags."""
+
     title: str | None = None
     artist: str | None = None
     album: str | None = None
@@ -20,11 +39,11 @@ class SimpleAudioTag:
     album_art: str | None = None
 
     def b64decode_album_art(self) -> tuple[str, bytes] | None:
-        """
-        Decode the base64-encoded album art data URI.
+        """Decode the base64-encoded album art data URI.
 
         Returns:
-            tuple[str, bytes] | None: A tuple containing the MIME type and base64-encoded data, or None if decoding fails.
+            tuple[str, bytes] | None: A tuple containing the MIME type and raw image bytes,
+                or None if no album art is present or decoding fails.
         """
         if self.album_art is None:
             logger.warning("album_art is None")
@@ -37,14 +56,13 @@ class SimpleAudioTag:
 
 
 def parse_base64_encoded_data_uri(data_uri: str) -> tuple[str, str]:
-    """
-    Parse a data URI into its MIME type and base64-encoded data.
+    """Parse a data URI into its MIME type and base64-encoded data string.
 
     Args:
-        data_uri (str): The data URI encoded in base64 to parse.
+        data_uri: The data URI to parse (e.g., 'data:image/jpeg;base64,...').
 
     Returns:
-        tuple[str, str]: A tuple containing the MIME type and base64-encoded data.
+        tuple[str, str]: A tuple of (mime_type, base64_data).
 
     Raises:
         ValueError: If the data URI is not in the expected format.
@@ -63,41 +81,41 @@ def parse_base64_encoded_data_uri(data_uri: str) -> tuple[str, str]:
 
 
 def b64encode(mime: str, data: bytes) -> str:
-    """
-    Encode binary data into a base64-encoded data URI.
+    """Encode binary data into a base64-encoded data URI.
 
     Args:
-        mime (str): The MIME type of the data.
-        data (bytes): The binary data to encode.
+        mime: The MIME type of the data (e.g., 'image/jpeg').
+        data: The binary data to encode.
 
     Returns:
-        str: The base64-encoded data URI.
+        str: The base64-encoded data URI string.
+
+    Raises:
+        ValueError: If encoding fails.
     """
     try:
         data_b64 = base64.b64encode(data).decode("utf-8")
-        data_uri = f"data:{mime};base64," + data_b64
-        return data_uri
-    except ValueError as e:
+        return f"data:{mime};base64,{data_b64}"
+    except (TypeError, ValueError) as e:
         logger.error(f"Failed to encode data: {e}")
-        raise ValueError(f"Failed to encode data: {e}")
+        raise ValueError(f"Failed to encode data: {e}") from e
 
 
 def b64decode(data_uri: str) -> tuple[str, bytes]:
-    """
-    Decode a base64-encoded data URI into its MIME type and raw data.
+    """Decode a base64-encoded data URI into its MIME type and raw bytes.
 
     Args:
-        data_uri (str): The data URI encoded in base64 to decode.
+        data_uri: The base64-encoded data URI to decode.
 
     Returns:
-        tuple[str, bytes]: A tuple containing the MIME type and raw data.
+        tuple[str, bytes]: A tuple of (mime_type, raw_bytes).
 
     Raises:
-        ValueError: If the data URI is not in the expected format or decoding fails.
+        ValueError: If the data URI format is invalid or decoding fails.
     """
     try:
         mime, data = parse_base64_encoded_data_uri(data_uri)
         return (mime, base64.b64decode(data))
-    except ValueError as e:
+    except (TypeError, ValueError) as e:
         logger.error(f"Failed to decode base64 data: {e}")
-        raise ValueError(f"Failed to decode base64 data: {e}")
+        raise ValueError(f"Failed to decode base64 data: {e}") from e
