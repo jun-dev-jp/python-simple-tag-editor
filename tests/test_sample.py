@@ -19,6 +19,7 @@ from python_simple_tag_editor import (
 from python_simple_tag_editor.exceptions import (
     FileReadError,
     FileWriteError,
+    InvalidTagValueError,
     UnsupportedAudioFormatError,
 )
 
@@ -301,3 +302,171 @@ def test_audio_tag_utilities() -> None:
 
     with pytest.raises(ValueError):
         _ = b64decode("invalid_uri")
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    "invalid_track",
+    [
+        "not-a-number",
+        "0",
+        "01",
+        "1/0",
+        "1/01",
+        "0/1",
+        "-1",
+        "1/",
+        "/1",
+        "1/2/3",
+        " 1 ",
+        "",
+        "65536",
+        "1/65536",
+    ],
+)
+def test_invalid_track_number_rejected(
+    sample_filename: str, invalid_track: str
+) -> None:
+    """Test that invalid track numbers raise InvalidTagValueError and are not saved."""
+    sample_path = SAMPLE_DIR / sample_filename
+    editor = get_tag_editor(sample_path)
+    with pytest.raises(InvalidTagValueError):
+        editor.edit_track_number(invalid_track)
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    "invalid_disk",
+    [
+        "not-a-number",
+        "0",
+        "01",
+        "1/0",
+        "1/01",
+        "0/1",
+        "-1",
+        "1/",
+        "/1",
+        "1/2/3",
+        " 1 ",
+        "",
+        "65536",
+        "1/65536",
+    ],
+)
+def test_invalid_disk_number_rejected(sample_filename: str, invalid_disk: str) -> None:
+    """Test that invalid disk numbers raise InvalidTagValueError and are not saved."""
+    sample_path = SAMPLE_DIR / sample_filename
+    editor = get_tag_editor(sample_path)
+    with pytest.raises(InvalidTagValueError):
+        editor.edit_disk_number(invalid_disk)
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    "invalid_year",
+    [
+        "not-a-year",
+        "202",
+        "20261",
+        "2026-1",
+        "2026-13",
+        "2026-00",
+        "2026-02-30",
+        "2026-invalid",
+        "2026abc",
+        "",
+        " 2026 ",
+    ],
+)
+def test_invalid_year_rejected(sample_filename: str, invalid_year: str) -> None:
+    """Test that malformed year/date values raise InvalidTagValueError."""
+    sample_path = SAMPLE_DIR / sample_filename
+    editor = get_tag_editor(sample_path)
+    with pytest.raises(InvalidTagValueError):
+        editor.edit_year(invalid_year)
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    ("valid_track", "valid_disk"),
+    [
+        ("1", "1"),
+        ("1/12", "1/2"),
+        ("10/10", "2/2"),
+    ],
+)
+def test_valid_track_and_disk_numbers_roundtrip(
+    sample_filename: str, valid_track: str, valid_disk: str, tmp_path: Path
+) -> None:
+    """Test that valid track and disk numbers round-trip consistently across formats."""
+    sample_path = SAMPLE_DIR / sample_filename
+    output_path = tmp_path / f"edited_{sample_filename}"
+
+    editor = get_tag_editor(sample_path)
+    editor.edit_track_number(valid_track)
+    editor.edit_disk_number(valid_disk)
+    editor.save_to_file(output_path, overwrite=True)
+
+    read_back = read_tags(output_path)
+    assert read_back.track_number == valid_track
+    assert read_back.disk_number == valid_disk
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    "valid_year",
+    [
+        "2026",
+        "2026-10",
+        "2026-10-04",
+    ],
+)
+def test_valid_year_formats_roundtrip(
+    sample_filename: str, valid_year: str, tmp_path: Path
+) -> None:
+    """Test that valid year/date formats round-trip consistently across formats."""
+    sample_path = SAMPLE_DIR / sample_filename
+    output_path = tmp_path / f"edited_{sample_filename}"
+
+    editor = get_tag_editor(sample_path)
+    editor.edit_year(valid_year)
+    editor.save_to_file(output_path, overwrite=True)
+
+    read_back = read_tags(output_path)
+    assert read_back.year == valid_year

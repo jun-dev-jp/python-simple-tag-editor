@@ -25,7 +25,11 @@ from mutagen.id3 import error as ID3Error
 from mutagen.mp3 import MP3
 
 from .audio_tag import SUPPORTED_ALBUM_ART_MIME_TYPES, b64decode
-from .audio_tag_editor import SimpleAudioTagEditor
+from .audio_tag_editor import (
+    SimpleAudioTagEditor,
+    validate_track_or_disk_number,
+    validate_year,
+)
 from .exceptions import TagWriteError
 
 logger = logging.getLogger(__name__)
@@ -128,17 +132,16 @@ class SimpleID3TagEditor(SimpleAudioTagEditor):
         """Edit the year tag (TDRC and TYER).
 
         Args:
-            new_year: The new year to set.
+            new_year: The new year to set (e.g., '2026', '2026-10', '2026-10-04').
 
         Raises:
+            InvalidTagValueError: If the year format is invalid.
             TagWriteError: If the year tag cannot be edited.
         """
-        if not re.match(r"^\d{4}", new_year):
-            logger.warning("new_year should start with a 4-digit year (e.g., '2026').")
-
+        validated_year = validate_year(new_year)
         try:
-            self._id3_tags["TDRC"] = TDRC(encoding=3, text=new_year)
-            self._id3_tags["TYER"] = TYER(encoding=3, text=new_year)
+            self._id3_tags["TDRC"] = TDRC(encoding=3, text=validated_year)
+            self._id3_tags["TYER"] = TYER(encoding=3, text=validated_year)
         except ID3Error as e:
             logger.error(f"Failed to edit year tag: {e}")
             raise TagWriteError(f"Failed to edit year tag: {e}") from e
@@ -186,12 +189,10 @@ class SimpleID3TagEditor(SimpleAudioTagEditor):
             new_disk_number: The new disk number to set (e.g., '1' or '1/2').
 
         Raises:
+            InvalidTagValueError: If the disk number format is invalid.
             TagWriteError: If the disk number tag cannot be edited.
         """
-        if not re.match(r"^\d+(/\d+)?$", new_disk_number):
-            logger.warning(
-                f"Invalid disk number format: '{new_disk_number}'. Expected a number or 'number/total'."
-            )
+        validate_track_or_disk_number(new_disk_number, "disk")
         self._set_tag("TPOS", TPOS(encoding=3, text=new_disk_number), "disk number")
 
     @override
@@ -211,12 +212,10 @@ class SimpleID3TagEditor(SimpleAudioTagEditor):
             new_track_number: The new track number to set (e.g., '1' or '1/10').
 
         Raises:
+            InvalidTagValueError: If the track number format is invalid.
             TagWriteError: If the track number tag cannot be edited.
         """
-        if not re.match(r"^\d+(/\d+)?$", new_track_number):
-            logger.warning(
-                f"Invalid track number format: '{new_track_number}'. Expected a number or 'number/total'."
-            )
+        validate_track_or_disk_number(new_track_number, "track")
         self._set_tag("TRCK", TRCK(encoding=3, text=new_track_number), "track number")
 
     @override

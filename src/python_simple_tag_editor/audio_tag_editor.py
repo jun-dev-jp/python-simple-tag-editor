@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 from abc import ABC, abstractmethod
+from datetime import date, datetime
 from os import PathLike
 from pathlib import Path
 
@@ -16,11 +18,95 @@ from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Tags
 from mutagen.mp4 import error as MP4Error
 
-from .exceptions import FileWriteError, TagWriteError
+from .exceptions import FileWriteError, InvalidTagValueError, TagWriteError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SimpleAudioTagEditor"]
+__all__ = ["SimpleAudioTagEditor", "validate_track_or_disk_number", "validate_year"]
+
+
+def validate_year(year: str) -> str:
+    """Validate a year or date string.
+
+    Accepted formats:
+        - 'YYYY' (4-digit year, e.g., '2026')
+        - 'YYYY-MM' (year and 2-digit month, e.g., '2026-10')
+        - 'YYYY-MM-DD' (ISO 8601 calendar date, e.g., '2026-10-04')
+        - ISO 8601 date-time (e.g., '2026-10-04T12:00:00Z')
+
+    Args:
+        year: The year or date string to validate.
+
+    Returns:
+        The validated year/date string.
+
+    Raises:
+        InvalidTagValueError: If year is not a valid year or date format.
+    """
+    if re.fullmatch(r"\d{4}", year):
+        return year
+    if re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", year):
+        return year
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", year):
+        try:
+            date.fromisoformat(year)
+            return year
+        except ValueError as e:
+            raise InvalidTagValueError(
+                f"Invalid date: '{year}'. Calendar date is not valid."
+            ) from e
+    if "T" in year:
+        try:
+            datetime.fromisoformat(year)
+            return year
+        except ValueError as e:
+            raise InvalidTagValueError(
+                f"Invalid date-time: '{year}'. ISO 8601 date-time is not valid."
+            ) from e
+    raise InvalidTagValueError(
+        f"Invalid year/date format: '{year}'. "
+        "Expected 'YYYY', 'YYYY-MM', 'YYYY-MM-DD', or ISO 8601 format."
+    )
+
+
+def validate_track_or_disk_number(
+    value: str, field_name: str = "track"
+) -> tuple[int, int]:
+    """Validate a track or disk number string.
+
+    Accepted formats:
+        - 'number' (e.g., '1', '50')
+        - 'number/total' (e.g., '1/12', '55/60')
+
+    Both number and total (if provided) must be positive integers between 1 and 65535
+    without leading zeros.
+
+    Args:
+        value: The track or disk number string to validate.
+        field_name: The name of the field for error messages ('track' or 'disk').
+
+    Returns:
+        tuple[int, int]: (number, total) where total is 0 if not specified.
+
+    Raises:
+        InvalidTagValueError: If value is not a valid track or disk number format.
+    """
+    match = re.fullmatch(r"([1-9]\d*)(?:/([1-9]\d*))?", value)
+    if not match:
+        raise InvalidTagValueError(
+            f"Invalid {field_name} number format: '{value}'. "
+            f"Expected a positive integer or 'number/total' (e.g., '1' or '1/10')."
+        )
+
+    num = int(match.group(1))
+    total = int(match.group(2)) if match.group(2) else 0
+
+    if num > 65535 or total > 65535:
+        raise InvalidTagValueError(
+            f"Invalid {field_name} number: values must not exceed 65535 (got '{value}')."
+        )
+
+    return num, total
 
 
 class SimpleAudioTagEditor(ABC):
@@ -101,7 +187,15 @@ class SimpleAudioTagEditor(ABC):
 
     @abstractmethod
     def edit_year(self, new_year: str) -> None:
-        """Edit the year tag."""
+        """Edit the year tag.
+
+        Args:
+            new_year: The new year to set (e.g., '2026', '2026-10', '2026-10-04').
+
+        Raises:
+            InvalidTagValueError: If the year format is invalid.
+            TagWriteError: If the year tag cannot be edited.
+        """
 
     @abstractmethod
     def clear_year(self) -> None:
@@ -117,7 +211,15 @@ class SimpleAudioTagEditor(ABC):
 
     @abstractmethod
     def edit_disk_number(self, new_disk_number: str) -> None:
-        """Edit the disk number tag."""
+        """Edit the disk number tag.
+
+        Args:
+            new_disk_number: The new disk number to set (e.g., '1' or '1/2').
+
+        Raises:
+            InvalidTagValueError: If the disk number format is invalid.
+            TagWriteError: If the disk number tag cannot be edited.
+        """
 
     @abstractmethod
     def clear_disk_number(self) -> None:
@@ -125,7 +227,15 @@ class SimpleAudioTagEditor(ABC):
 
     @abstractmethod
     def edit_track_number(self, new_track_number: str) -> None:
-        """Edit the track number tag."""
+        """Edit the track number tag.
+
+        Args:
+            new_track_number: The new track number to set (e.g., '1' or '1/10').
+
+        Raises:
+            InvalidTagValueError: If the track number format is invalid.
+            TagWriteError: If the track number tag cannot be edited.
+        """
 
     @abstractmethod
     def clear_track_number(self) -> None:

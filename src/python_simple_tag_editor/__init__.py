@@ -20,10 +20,15 @@ from .audio_tag import (
     b64encode,
     parse_base64_encoded_data_uri,
 )
-from .audio_tag_editor import SimpleAudioTagEditor
+from .audio_tag_editor import (
+    SimpleAudioTagEditor,
+    validate_track_or_disk_number,
+    validate_year,
+)
 from .exceptions import (
     FileReadError,
     FileWriteError,
+    InvalidTagValueError,
     SimpleTagEditorError,
     TagReadError,
     TagWriteError,
@@ -39,6 +44,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "FileReadError",
     "FileWriteError",
+    "InvalidTagValueError",
     "SimpleAudioTag",
     "SimpleAudioTagEditor",
     "SimpleID3Tag",
@@ -54,6 +60,8 @@ __all__ = [
     "get_tag_editor",
     "parse_base64_encoded_data_uri",
     "read_tags",
+    "validate_track_or_disk_number",
+    "validate_year",
 ]
 
 

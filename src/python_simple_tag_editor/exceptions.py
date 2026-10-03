@@ -5,6 +5,7 @@ from __future__ import annotations
 __all__ = [
     "FileReadError",
     "FileWriteError",
+    "InvalidTagValueError",
     "SimpleTagEditorError",
     "TagReadError",
     "TagWriteError",
@@ -26,6 +27,10 @@ class FileWriteError(SimpleTagEditorError, IOError):
 
 class UnsupportedAudioFormatError(SimpleTagEditorError, ValueError):
     """Exception raised when an unsupported or unparseable audio format is specified."""
+
+
+class InvalidTagValueError(SimpleTagEditorError, ValueError):
+    """Exception raised when a tag value has an invalid format or value."""
 
 
 class TagReadError(SimpleTagEditorError, IOError):

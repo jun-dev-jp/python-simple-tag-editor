@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import Final, cast, override
 
 from mutagen.mp4 import MP4, MP4Cover, MP4Tags
 from mutagen.mp4 import error as MP4Error
 
 from .audio_tag import SUPPORTED_ALBUM_ART_MIME_TYPES, b64decode
-from .audio_tag_editor import SimpleAudioTagEditor
+from .audio_tag_editor import (
+    SimpleAudioTagEditor,
+    validate_track_or_disk_number,
+    validate_year,
+)
 from .exceptions import TagWriteError
 
 logger = logging.getLogger(__name__)
@@ -113,14 +116,14 @@ class SimpleMP4TagEditor(SimpleAudioTagEditor):
         """Edit the year tag (©day).
 
         Args:
-            new_year: The new year to set.
+            new_year: The new year to set (e.g., '2026', '2026-10', '2026-10-04').
 
         Raises:
+            InvalidTagValueError: If the year format is invalid.
             TagWriteError: If the year tag cannot be edited.
         """
-        if not re.match(r"^\d{4}", new_year):
-            logger.warning("new_year should start with a 4-digit year (e.g., '2026').")
-        self._set_tag("©day", [new_year], "year")
+        validated_year = validate_year(new_year)
+        self._set_tag("©day", [validated_year], "year")
 
     @override
     def clear_year(self) -> None:
@@ -160,15 +163,10 @@ class SimpleMP4TagEditor(SimpleAudioTagEditor):
             new_disk_number: The new disk number to set (e.g., '1' or '1/2').
 
         Raises:
+            InvalidTagValueError: If the disk number format is invalid.
             TagWriteError: If the disk number tag cannot be edited.
         """
-        if not re.match(r"^\d+(/\d+)?$", new_disk_number):
-            logger.warning(
-                f"Invalid disk number format: '{new_disk_number}'. Expected a number or 'number/total'."
-            )
-        match = re.match(r"^(\d+)(?:/(\d+))?$", new_disk_number)
-        num = int(match.group(1)) if match else 1
-        total = int(match.group(2)) if match and match.group(2) else 0
+        num, total = validate_track_or_disk_number(new_disk_number, "disk")
         self._set_tag("disk", [(num, total)], "disk number")
 
     @override
@@ -188,15 +186,10 @@ class SimpleMP4TagEditor(SimpleAudioTagEditor):
             new_track_number: The new track number to set (e.g., '1' or '1/10').
 
         Raises:
+            InvalidTagValueError: If the track number format is invalid.
             TagWriteError: If the track number tag cannot be edited.
         """
-        if not re.match(r"^\d+(/\d+)?$", new_track_number):
-            logger.warning(
-                f"Invalid track number format: '{new_track_number}'. Expected a number or 'number/total'."
-            )
-        match = re.match(r"^(\d+)(?:/(\d+))?$", new_track_number)
-        num = int(match.group(1)) if match else 1
-        total = int(match.group(2)) if match and match.group(2) else 0
+        num, total = validate_track_or_disk_number(new_track_number, "track")
         self._set_tag("trkn", [(num, total)], "track number")
 
     @override

@@ -138,6 +138,7 @@ SimpleTagEditorError
  ├── FileReadError (IOError)
  ├── FileWriteError (IOError)
  ├── UnsupportedAudioFormatError (ValueError)
+ ├── InvalidTagValueError (ValueError)
  ├── TagReadError (IOError)
  └── TagWriteError (IOError)
 ```
