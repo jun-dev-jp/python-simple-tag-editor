@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
+from mutagen import File as MutagenFile
 
 from python_simple_tag_editor import (
     SimpleAudioTag,
@@ -153,6 +155,27 @@ def test_edit_and_save_sample_tags(sample_filename: str, tmp_path: Path) -> None
     assert updated_tags.disk_number == "1/1"
     assert updated_tags.lyrics == "更新された歌詞です。"
     assert updated_tags.album_art is not None
+
+
+@pytest.mark.parametrize("sample_filename", ["sample_01.mp3", "sample_03.aiff"])
+def test_edit_and_save_untagged_id3_audio(sample_filename: str, tmp_path: Path) -> None:
+    """Test that edits to untagged MP3 and AIFF files are saved without changing the source."""
+    sample_path = SAMPLE_DIR / sample_filename
+    source_path = tmp_path / f"untagged_{sample_filename}"
+    output_path = tmp_path / f"edited_{sample_filename}"
+    shutil.copyfile(sample_path, source_path)
+
+    audio = MutagenFile(source_path)
+    assert audio is not None
+    audio.delete()
+    assert read_tags(source_path).title is None
+
+    editor = get_tag_editor(source_path)
+    editor.edit_title("新しいタイトル")
+    editor.save_to_file(output_path)
+
+    assert read_tags(output_path).title == "新しいタイトル"
+    assert read_tags(source_path).title is None
 
 
 @pytest.mark.parametrize(

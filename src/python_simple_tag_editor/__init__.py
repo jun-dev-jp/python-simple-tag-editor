@@ -134,8 +134,11 @@ def get_tag_editor(file_path: str | PathLike[str]) -> SimpleAudioTagEditor:
     audio = _validate_and_open_audio(file_path)
 
     if isinstance(audio, (MP3, AIFF)):
-        id3tags = audio.tags if isinstance(audio.tags, ID3Tags) else ID3Tags()
-        return SimpleID3TagEditor(audio, id3tags)
+        if audio.tags is None:
+            audio.add_tags()
+        if isinstance(audio.tags, ID3Tags):
+            return SimpleID3TagEditor(audio, audio.tags)
+        raise UnsupportedAudioFormatError(f"Format not supported: {type(audio)}")
 
     if isinstance(audio, MP4):
         mp4tags = audio.tags if isinstance(audio.tags, MP4Tags) else MP4Tags()
