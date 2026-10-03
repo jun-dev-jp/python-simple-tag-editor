@@ -1,6 +1,6 @@
 [project]
 name = "python-simple-tag-editor"
-version = "0.1.0"
+version = "0.2.0"
 description = "A simple and unified audio tag editor for MP3, MP4, AIFF, WAV, FLAC, and Opus files."
 readme = "README.md"
 license = "GPL-2.0-only"
