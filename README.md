@@ -1,5 +1,10 @@
 # python-simple-tag-editor
 
+[![CI](https://github.com/jun-dev-jp/numpy-ring-buffer/actions/workflows/ci.yml/badge.svg)](https://github.com/jun-dev-jp/numpy-ring-buffer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+
+
 A lightweight, robust, and format-agnostic audio metadata library for Python built on top of `mutagen`.
 
 It provides a unified, intuitive API to read and edit metadata tags across **MP3**, **MP4/M4A**, and **AIFF** audio files without needing to know format-specific tagging internals (such as ID3 frames vs. MP4 atoms).
@@ -151,9 +156,14 @@ uv run ruff check
 # Run formatter check
 uv run ruff format --check
 
+# Run type checker
+uv run pyright
+
 # Run test suite
 uv run pytest
 ```
+
+GitHub Actions runs these checks on pushes and pull requests for Python 3.12, 3.13, 3.14, and 3.15.
 
 ---
 
