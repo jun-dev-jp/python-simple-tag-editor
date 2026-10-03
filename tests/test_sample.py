@@ -1,20 +1,25 @@
-"""Integration and unit tests for reading and editing tags across audio formats (MP3, M4A, AIFF)."""
+"""Integration and unit tests for reading and editing tags across audio formats (MP3, M4A, AIFF, WAV, FLAC, Opus)."""
 
 from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from mutagen import File as MutagenFile
 from mutagen import MutagenError
+from mutagen.flac import FLAC
 from mutagen.id3 import ID3Tags
 from mutagen.mp4 import MP4Tags
+from mutagen.oggopus import OggOpus
 
 from python_simple_tag_editor import (
     SimpleAudioTag,
+    SimpleFLACTag,
     SimpleID3Tag,
     SimpleMP4Tag,
+    SimpleOpusTag,
     b64decode,
     b64encode,
     get_tag_editor,
@@ -31,6 +36,15 @@ from python_simple_tag_editor.exceptions import (
 )
 
 SAMPLE_DIR = Path("samples")
+
+ALL_SAMPLE_FILES: list[str] = [
+    "sample_01.mp3",
+    "sample_02.m4a",
+    "sample_03.aiff",
+    "sample_04.flac",
+    "sample_05.opus",
+    "sample_06.wav",
+]
 
 
 @pytest.mark.parametrize(
@@ -87,6 +101,45 @@ SAMPLE_DIR = Path("samples")
             "image/jpeg",
             103616,
         ),
+        (
+            "sample_04.flac",
+            "FLACサンプル",
+            "東進ブックス",
+            "TOEIC L&Rテスト上級英単語1500",
+            "2015",
+            "Books & Spoken",
+            "4/20",
+            "1/1",
+            "これはFLACのサンプルです。\nThis is a sample.",
+            "image/jpeg",
+            103616,
+        ),
+        (
+            "sample_05.opus",
+            "Opusサンプル",
+            "東進ブックス",
+            "TOEIC L&Rテスト上級英単語1500",
+            "2018",
+            "Books & Spoken",
+            "5/20",
+            "1/1",
+            "これはOpusのサンプルです。\nThis is a sample.",
+            "image/jpeg",
+            103616,
+        ),
+        (
+            "sample_06.wav",
+            "WAVサンプル",
+            "東進ブックス",
+            "TOEIC L&Rテスト上級英単語1500",
+            "1995",
+            "Books & Spoken",
+            "6",
+            "1",
+            "これはWAVのサンプルです。\nThis is a sample.",
+            "image/jpeg",
+            103616,
+        ),
     ],
 )
 def test_read_sample_tags(
@@ -123,14 +176,7 @@ def test_read_sample_tags(
     assert len(data) == expected_art_len
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_edit_and_save_sample_tags(sample_filename: str, tmp_path: Path) -> None:
     """Test editing all metadata tags and saving to a new file using common editor interface."""
     sample_path = SAMPLE_DIR / sample_filename
@@ -165,9 +211,9 @@ def test_edit_and_save_sample_tags(sample_filename: str, tmp_path: Path) -> None
     assert updated_tags.album_art is not None
 
 
-@pytest.mark.parametrize("sample_filename", ["sample_01.mp3", "sample_03.aiff"])
-def test_edit_and_save_untagged_id3_audio(sample_filename: str, tmp_path: Path) -> None:
-    """Test that edits to untagged MP3 and AIFF files are saved without changing the source."""
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
+def test_edit_and_save_untagged_audio(sample_filename: str, tmp_path: Path) -> None:
+    """Test that edits to untagged audio files are saved without changing the source."""
     sample_path = SAMPLE_DIR / sample_filename
     source_path = tmp_path / f"untagged_{sample_filename}"
     output_path = tmp_path / f"edited_{sample_filename}"
@@ -186,14 +232,7 @@ def test_edit_and_save_untagged_id3_audio(sample_filename: str, tmp_path: Path) 
     assert read_tags(source_path).title is None
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_clear_all_tags(sample_filename: str, tmp_path: Path) -> None:
     """Test clearing all tags and verifying the result."""
     sample_path = SAMPLE_DIR / sample_filename
@@ -210,14 +249,7 @@ def test_clear_all_tags(sample_filename: str, tmp_path: Path) -> None:
     assert cleared_tags.album is None
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_clear_individual_tags(sample_filename: str, tmp_path: Path) -> None:
     """Test clearing individual tags."""
     sample_path = SAMPLE_DIR / sample_filename
@@ -311,14 +343,7 @@ def test_audio_tag_utilities() -> None:
         _ = b64decode("invalid_uri")
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     "invalid_track",
     [
@@ -348,14 +373,7 @@ def test_invalid_track_number_rejected(
         editor.edit_track_number(invalid_track)
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     "invalid_disk",
     [
@@ -383,14 +401,7 @@ def test_invalid_disk_number_rejected(sample_filename: str, invalid_disk: str) -
         editor.edit_disk_number(invalid_disk)
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     "invalid_year",
     [
@@ -415,14 +426,7 @@ def test_invalid_year_rejected(sample_filename: str, invalid_year: str) -> None:
         editor.edit_year(invalid_year)
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     ("valid_track", "valid_disk"),
     [
@@ -448,14 +452,7 @@ def test_valid_track_and_disk_numbers_roundtrip(
     assert read_back.disk_number == valid_disk
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     "valid_year",
     [
@@ -479,14 +476,7 @@ def test_valid_year_formats_roundtrip(
     assert read_back.year == valid_year
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_atomic_save_success_and_temp_file_cleanup(
     sample_filename: str, tmp_path: Path
 ) -> None:
@@ -504,14 +494,7 @@ def test_atomic_save_success_and_temp_file_cleanup(
     assert leftover_tmp_files == []
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_atomic_save_mutagen_failure_preserves_destination_and_cleans_up(
     sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -538,14 +521,7 @@ def test_atomic_save_mutagen_failure_preserves_destination_and_cleans_up(
     assert leftover_tmp_files == []
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_atomic_save_mutagen_failure_leaves_nonexistent_destination_absent(
     sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -569,14 +545,7 @@ def test_atomic_save_mutagen_failure_leaves_nonexistent_destination_absent(
     assert leftover_tmp_files == []
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_atomic_save_inplace_failure_preserves_source_audio(
     sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -602,14 +571,7 @@ def test_atomic_save_inplace_failure_preserves_source_audio(
     assert leftover_tmp_files == []
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 def test_atomic_save_os_error_preserves_destination_and_cleans_up(
     sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -637,14 +599,7 @@ def test_atomic_save_os_error_preserves_destination_and_cleans_up(
     assert leftover_tmp_files == []
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     "invalid_album_art",
     [
@@ -673,14 +628,7 @@ def test_invalid_album_art_rejected(
         editor.edit_album_art(invalid_album_art)
 
 
-@pytest.mark.parametrize(
-    "sample_filename",
-    [
-        "sample_01.mp3",
-        "sample_02.m4a",
-        "sample_03.aiff",
-    ],
-)
+@pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
 @pytest.mark.parametrize(
     ("mime_type", "image_bytes"),
     [
@@ -740,6 +688,33 @@ def test_tag_read_error_wraps_mutagen_and_preserves_cause(
     assert isinstance(mp4_exc_info.value.__cause__, MutagenError)
     assert "Simulated Mutagen failure" in str(mp4_exc_info.value.__cause__)
 
+    def mock_flac_mutagen_error(*args: object, **kwargs: object) -> str | None:
+        raise MutagenError("Simulated Mutagen failure reading FLAC")
+
+    flac_mock = MagicMock(spec=FLAC)
+    flac_mock.tags = MagicMock()
+    flac_mock.pictures = []
+    monkeypatch.setattr(
+        SimpleFLACTag, "_get_tag", staticmethod(mock_flac_mutagen_error)
+    )
+    with pytest.raises(TagReadError) as flac_exc_info:
+        SimpleFLACTag.from_FLAC(flac_mock)
+    assert isinstance(flac_exc_info.value.__cause__, MutagenError)
+    assert "Simulated Mutagen failure" in str(flac_exc_info.value.__cause__)
+
+    def mock_opus_mutagen_error(*args: object, **kwargs: object) -> str | None:
+        raise MutagenError("Simulated Mutagen failure reading Opus")
+
+    opus_mock = MagicMock(spec=OggOpus)
+    opus_mock.tags = MagicMock()
+    monkeypatch.setattr(
+        SimpleOpusTag, "_get_tag", staticmethod(mock_opus_mutagen_error)
+    )
+    with pytest.raises(TagReadError) as opus_exc_info:
+        SimpleOpusTag.from_OggOpus(opus_mock)
+    assert isinstance(opus_exc_info.value.__cause__, MutagenError)
+    assert "Simulated Mutagen failure" in str(opus_exc_info.value.__cause__)
+
 
 def test_tag_read_unexpected_error_not_wrapped(
     monkeypatch: pytest.MonkeyPatch,
@@ -756,6 +731,18 @@ def test_tag_read_unexpected_error_not_wrapped(
     monkeypatch.setattr(SimpleMP4Tag, "_get_tag", staticmethod(mock_type_error))
     with pytest.raises(TypeError, match="Unexpected programming bug"):
         SimpleMP4Tag.from_MP4Tags(MP4Tags())
+
+    flac_mock = MagicMock(spec=FLAC)
+    flac_mock.tags = MagicMock()
+    monkeypatch.setattr(SimpleFLACTag, "_get_tag", staticmethod(mock_type_error))
+    with pytest.raises(TypeError, match="Unexpected programming bug"):
+        SimpleFLACTag.from_FLAC(flac_mock)
+
+    opus_mock = MagicMock(spec=OggOpus)
+    opus_mock.tags = MagicMock()
+    monkeypatch.setattr(SimpleOpusTag, "_get_tag", staticmethod(mock_type_error))
+    with pytest.raises(TypeError, match="Unexpected programming bug"):
+        SimpleOpusTag.from_OggOpus(opus_mock)
 
 
 def test_tag_write_error_wraps_mutagen_and_preserves_cause(

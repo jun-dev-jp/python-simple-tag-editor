@@ -1,4 +1,4 @@
-"""python-simple-tag-editor: Simple and unified audio tag editor for MP3, MP4, and AIFF files."""
+"""python-simple-tag-editor: Simple and unified audio tag editor for MP3, MP4, AIFF, WAV, FLAC, and Opus files."""
 
 from __future__ import annotations
 
@@ -10,9 +10,12 @@ from mutagen import File as MutagenFile
 from mutagen import FileType as MutagenFileType
 from mutagen import MutagenError
 from mutagen.aiff import AIFF
+from mutagen.flac import FLAC, VCFLACDict
 from mutagen.id3 import ID3Tags
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Tags
+from mutagen.oggopus import OggOpus, OggOpusVComment
+from mutagen.wave import WAVE
 
 from .audio_tag import (
     JPEG_MAGIC,
@@ -38,10 +41,16 @@ from .exceptions import (
     TagWriteError,
     UnsupportedAudioFormatError,
 )
-from .id3tag import SimpleID3Tag
-from .id3tag_editor import SimpleID3TagEditor
+from .id3tag import SimpleID3Tag, SimpleWAVTag
+from .id3tag_editor import SimpleID3TagEditor, SimpleWAVTagEditor
 from .mp4tag import SimpleMP4Tag
 from .mp4tag_editor import SimpleMP4TagEditor
+from .vorbistag import SimpleFLACTag, SimpleOpusTag, SimpleVorbisTag
+from .vorbistag_editor import (
+    SimpleFLACTagEditor,
+    SimpleOpusTagEditor,
+    SimpleVorbisTagEditor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +63,19 @@ __all__ = [
     "SUPPORTED_ALBUM_ART_MIME_TYPES",
     "SimpleAudioTag",
     "SimpleAudioTagEditor",
+    "SimpleFLACTag",
+    "SimpleFLACTagEditor",
     "SimpleID3Tag",
     "SimpleID3TagEditor",
     "SimpleMP4Tag",
     "SimpleMP4TagEditor",
+    "SimpleOpusTag",
+    "SimpleOpusTagEditor",
     "SimpleTagEditorError",
+    "SimpleVorbisTag",
+    "SimpleVorbisTagEditor",
+    "SimpleWAVTag",
+    "SimpleWAVTagEditor",
     "TagReadError",
     "TagWriteError",
     "UnsupportedAudioFormatError",
@@ -105,7 +122,7 @@ def read_tags(file_path: str | PathLike[str]) -> SimpleAudioTag:
     """Detect file format and extract metadata tags using the appropriate parser.
 
     Args:
-        file_path: Path to the audio file (MP3, MP4/M4A, AIFF).
+        file_path: Path to the audio file (MP3, MP4/M4A, AIFF, WAV, FLAC, Opus).
 
     Returns:
         SimpleAudioTag: Extracted audio metadata tags.
@@ -117,7 +134,7 @@ def read_tags(file_path: str | PathLike[str]) -> SimpleAudioTag:
     """
     audio = _validate_and_open_audio(file_path)
 
-    if isinstance(audio, (MP3, AIFF)):
+    if isinstance(audio, (MP3, AIFF, WAVE)):
         if audio.tags is None:
             return SimpleID3Tag()
         if isinstance(audio.tags, ID3Tags):
@@ -131,6 +148,16 @@ def read_tags(file_path: str | PathLike[str]) -> SimpleAudioTag:
             return SimpleMP4Tag.from_MP4Tags(audio.tags)
         raise UnsupportedAudioFormatError(f"Format not supported: {type(audio)}")
 
+    if isinstance(audio, FLAC):
+        if audio.tags is None and not audio.pictures:
+            return SimpleFLACTag()
+        return SimpleFLACTag.from_FLAC(audio)
+
+    if isinstance(audio, OggOpus):
+        if audio.tags is None:
+            return SimpleOpusTag()
+        return SimpleOpusTag.from_OggOpus(audio)
+
     raise UnsupportedAudioFormatError(f"Format not supported: {type(audio)}")
 
 
@@ -138,7 +165,7 @@ def get_tag_editor(file_path: str | PathLike[str]) -> SimpleAudioTagEditor:
     """Detect file format and return an appropriate tag editor instance.
 
     Args:
-        file_path: Path to the audio file (MP3, MP4/M4A, AIFF).
+        file_path: Path to the audio file (MP3, MP4/M4A, AIFF, WAV, FLAC, Opus).
 
     Returns:
         SimpleAudioTagEditor: Unified tag editor interface.
@@ -149,7 +176,7 @@ def get_tag_editor(file_path: str | PathLike[str]) -> SimpleAudioTagEditor:
     """
     audio = _validate_and_open_audio(file_path)
 
-    if isinstance(audio, (MP3, AIFF)):
+    if isinstance(audio, (MP3, AIFF, WAVE)):
         if audio.tags is None:
             audio.add_tags()
         if isinstance(audio.tags, ID3Tags):
@@ -159,5 +186,19 @@ def get_tag_editor(file_path: str | PathLike[str]) -> SimpleAudioTagEditor:
     if isinstance(audio, MP4):
         mp4tags = audio.tags if isinstance(audio.tags, MP4Tags) else MP4Tags()
         return SimpleMP4TagEditor(audio, mp4tags)
+
+    if isinstance(audio, FLAC):
+        if audio.tags is None:
+            audio.add_tags()
+        if isinstance(audio.tags, VCFLACDict):
+            return SimpleFLACTagEditor(audio, audio.tags)
+        raise UnsupportedAudioFormatError(f"Format not supported: {type(audio)}")
+
+    if isinstance(audio, OggOpus):
+        if audio.tags is None:
+            raise UnsupportedAudioFormatError("Ogg Opus file has no tags packet.")
+        if isinstance(audio.tags, OggOpusVComment):
+            return SimpleOpusTagEditor(audio, audio.tags)
+        raise UnsupportedAudioFormatError(f"Format not supported: {type(audio)}")
 
     raise UnsupportedAudioFormatError(f"Format not supported: {type(audio)}")

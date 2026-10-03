@@ -1,4 +1,4 @@
-"""ID3 tag reader implementation for MP3 and AIFF files."""
+"""ID3 tag reader implementation for MP3, AIFF, and WAV files."""
 
 from __future__ import annotations
 
@@ -14,12 +14,12 @@ from .exceptions import TagReadError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SimpleID3Tag"]
+__all__ = ["SimpleID3Tag", "SimpleWAVTag"]
 
 
 @dataclass(frozen=True)
 class SimpleID3Tag(SimpleAudioTag):
-    """Audio tag representation for ID3 metadata (used in MP3 and AIFF)."""
+    """Audio tag representation for ID3 metadata (used in MP3, AIFF, and WAV)."""
 
     @classmethod
     def from_ID3Tags(cls, id3_tags: ID3Tags) -> SimpleID3Tag:
@@ -112,3 +112,6 @@ class SimpleID3Tag(SimpleAudioTag):
         except ValueError as e:
             logger.error(f"APIC frame image data is invalid: {e}")
             return None
+
+
+type SimpleWAVTag = SimpleID3Tag

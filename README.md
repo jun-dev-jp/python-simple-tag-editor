@@ -7,13 +7,13 @@
 
 A lightweight, robust, and format-agnostic audio metadata library for Python built on top of `mutagen`.
 
-It provides a unified, intuitive API to read and edit metadata tags across **MP3**, **MP4/M4A**, and **AIFF** audio files without needing to know format-specific tagging internals (such as ID3 frames vs. MP4 atoms).
+It provides a unified, intuitive API to read and edit metadata tags across **MP3**, **MP4/M4A**, **AIFF**, **WAV**, **FLAC**, and **Opus** audio files without needing to know format-specific tagging internals (such as ID3 frames, MP4 atoms, or Vorbis comments).
 
 ---
 
 ## Features
 
-- **Unified Interface**: One consistent API for MP3, MP4 (M4A/AAC), and AIFF files.
+- **Unified Interface**: One consistent API for MP3, MP4 (M4A/AAC), AIFF, WAV, FLAC, and Opus files.
 - **Common Metadata Tags**:
   - Title (`title`)
   - Artist (`artist`)
@@ -127,6 +127,24 @@ editor.clear_all_tags()
 
 editor.save_to_file("song_cleaned.aiff", overwrite=True)
 ```
+
+---
+
+## Supported Audio Formats
+
+| Format | Extensions | Tagging Mechanism | Artwork Support |
+|---|---|---|---|
+| **MP3** | `.mp3` | ID3v2 (`mutagen.id3`) | APIC frame (`image/jpeg`, `image/png`) |
+| **MP4 / M4A** | `.m4a`, `.mp4` | MP4 atoms (`mutagen.mp4`) | `covr` atom (`image/jpeg`, `image/png`) |
+| **AIFF** | `.aiff`, `.aif` | ID3v2 chunk (`_IFFID3`) | APIC frame (`image/jpeg`, `image/png`) |
+| **WAV** | `.wav`, `.wave` | ID3v2 chunk (`_WaveID3`) | APIC frame (`image/jpeg`, `image/png`) |
+| **FLAC** | `.flac` | Vorbis Comment | FLAC Picture metadata block (`mutagen.flac.Picture`) |
+| **Opus** | `.opus` | Vorbis Comment | `METADATA_BLOCK_PICTURE` (RFC 7845 compliant base64 block) |
+
+### Format-Specific Notes & Limitations
+- **WAV files**: Tagging uses the standard ID3v2 RIFF chunk. Legacy RIFF `INFO` chunks (such as `INAM`, `IART`) are not processed; modern media players (Apple Music, VLC, DAW software, DJ tools) read the ID3 chunk.
+- **FLAC & Opus files**: Track and disk totals are stored using standard `TRACKTOTAL` (or `TOTALTRACKS`) and `DISCTOTAL` (or `TOTALDISCS`) Vorbis comment keys.
+- **Opus files**: Album artwork is embedded inside the Vorbis comment packet as a base64-encoded `METADATA_BLOCK_PICTURE` structure according to RFC 7845.
 
 ---
 

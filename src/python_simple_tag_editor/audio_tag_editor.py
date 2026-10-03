@@ -14,17 +14,32 @@ from pathlib import Path
 
 from mutagen import MutagenError
 from mutagen.aiff import AIFF
+from mutagen.flac import FLAC, VCFLACDict
+from mutagen.flac import error as FLACError
 from mutagen.id3 import ID3Tags
 from mutagen.id3 import error as ID3Error
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Tags
 from mutagen.mp4 import error as MP4Error
+from mutagen.oggopus import OggOpus, OggOpusVComment
+from mutagen.oggopus import error as OggOpusError
+from mutagen.wave import WAVE
+from mutagen.wave import error as WaveError
 
 from .exceptions import FileWriteError, InvalidTagValueError, TagWriteError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SimpleAudioTagEditor", "validate_track_or_disk_number", "validate_year"]
+type SupportedAudio = MP3 | AIFF | WAVE | MP4 | FLAC | OggOpus
+type SupportedTags = ID3Tags | MP4Tags | VCFLACDict | OggOpusVComment
+
+__all__ = [
+    "SimpleAudioTagEditor",
+    "SupportedAudio",
+    "SupportedTags",
+    "validate_track_or_disk_number",
+    "validate_year",
+]
 
 
 def validate_year(year: str) -> str:
@@ -114,9 +129,9 @@ def validate_track_or_disk_number(
 class SimpleAudioTagEditor(ABC):
     """Unified abstract interface for editing metadata tags across various audio formats."""
 
-    def __init__(self, audio: MP3 | AIFF | MP4, tags: ID3Tags | MP4Tags) -> None:
-        self._audio: MP3 | AIFF | MP4 = audio
-        self._tags: ID3Tags | MP4Tags = tags
+    def __init__(self, audio: SupportedAudio, tags: SupportedTags) -> None:
+        self._audio: SupportedAudio = audio
+        self._tags: SupportedTags = tags
 
     def save_to_file(
         self, output_path: str | PathLike[str], overwrite: bool = True
@@ -176,7 +191,14 @@ class SimpleAudioTagEditor(ABC):
             self._audio.save(tmp_path)
             os.replace(tmp_path, path)
             tmp_path = None
-        except (ID3Error, MP4Error, MutagenError) as e:
+        except (
+            ID3Error,
+            MP4Error,
+            FLACError,
+            OggOpusError,
+            WaveError,
+            MutagenError,
+        ) as e:
             logger.error(f"Failed to write tags to {path}: {e}")
             raise TagWriteError(f"Failed to write tags: {e}") from e
         except OSError as e:

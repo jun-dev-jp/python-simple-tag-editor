@@ -1,4 +1,4 @@
-"""ID3 tag editor implementation for MP3 and AIFF files."""
+"""ID3 tag editor implementation for MP3, AIFF, and WAV files."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from mutagen.id3 import (
 )
 from mutagen.id3 import error as ID3Error
 from mutagen.mp3 import MP3
+from mutagen.wave import WAVE
 
 from .audio_tag import validate_album_art
 from .audio_tag_editor import (
@@ -34,18 +35,18 @@ from .exceptions import TagWriteError
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SimpleID3TagEditor"]
+__all__ = ["SimpleID3TagEditor", "SimpleWAVTagEditor"]
 
 
 class SimpleID3TagEditor(SimpleAudioTagEditor):
-    """Tag editor for ID3-tagged audio files (MP3 and AIFF)."""
+    """Tag editor for ID3-tagged audio files (MP3, AIFF, and WAV)."""
 
-    def __init__(self, audio: MP3 | AIFF, tags: ID3Tags) -> None:
+    def __init__(self, audio: MP3 | AIFF | WAVE, tags: ID3Tags) -> None:
         super().__init__(audio, tags)
 
     @property
     def _id3_tags(self) -> ID3Tags:
-        """Cast base _tags to ID3Tags for ID3/AIFF operations."""
+        """Cast base _tags to ID3Tags for ID3/AIFF/WAV operations."""
         return cast(ID3Tags, self._tags)
 
     def _set_tag(self, key: str, tag_obj: Frame, tag_name: str) -> None:
@@ -321,3 +322,6 @@ class SimpleID3TagEditor(SimpleAudioTagEditor):
         except ID3Error as e:
             logger.error(f"Failed to clear all tags: {e}")
             raise TagWriteError(f"Failed to clear all tags: {e}") from e
+
+
+type SimpleWAVTagEditor = SimpleID3TagEditor
