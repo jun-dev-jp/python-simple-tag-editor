@@ -286,7 +286,18 @@ class SimpleAudioTagEditor(ABC):
     def edit_album_art(
         self, new_album_art: str, desc: str = "Front Cover", type: int = 3
     ) -> None:
-        """Edit the album art tag."""
+        """Edit the album art tag.
+
+        Args:
+            new_album_art: The album art as a base64-encoded Data URI.
+            desc: Description of the album art (default: 'Front Cover').
+            type: Picture type as defined in ID3v2 (default: 3 = Cover (front)).
+
+        Raises:
+            InvalidTagValueError: If the Data URI format is invalid, base64 payload is corrupt,
+                MIME type is unsupported, or image data does not match the MIME type.
+            TagWriteError: If the album art tag cannot be edited.
+        """
 
     @abstractmethod
     def clear_album_art(self) -> None:

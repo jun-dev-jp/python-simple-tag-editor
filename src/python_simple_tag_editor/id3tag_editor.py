@@ -24,7 +24,7 @@ from mutagen.id3 import (
 from mutagen.id3 import error as ID3Error
 from mutagen.mp3 import MP3
 
-from .audio_tag import SUPPORTED_ALBUM_ART_MIME_TYPES, b64decode
+from .audio_tag import validate_album_art
 from .audio_tag_editor import (
     SimpleAudioTagEditor,
     validate_track_or_disk_number,
@@ -282,11 +282,10 @@ class SimpleID3TagEditor(SimpleAudioTagEditor):
             type: Picture type as defined in ID3v2 (default: 3 = Cover (front)).
 
         Raises:
+            InvalidTagValueError: If the album art Data URI or image data is invalid.
             TagWriteError: If the album art tag cannot be edited.
         """
-        mime, album_art_bytes = b64decode(new_album_art)
-        if mime not in SUPPORTED_ALBUM_ART_MIME_TYPES:
-            logger.warning(f"Unsupported album art MIME type: {mime}")
+        mime, album_art_bytes = validate_album_art(new_album_art)
 
         try:
             self._id3_tags.delall("APIC")

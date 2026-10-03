@@ -15,10 +15,14 @@ from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Tags
 
 from .audio_tag import (
+    JPEG_MAGIC,
+    PNG_MAGIC,
+    SUPPORTED_ALBUM_ART_MIME_TYPES,
     SimpleAudioTag,
     b64decode,
     b64encode,
     parse_base64_encoded_data_uri,
+    validate_album_art,
 )
 from .audio_tag_editor import (
     SimpleAudioTagEditor,
@@ -45,6 +49,9 @@ __all__ = [
     "FileReadError",
     "FileWriteError",
     "InvalidTagValueError",
+    "JPEG_MAGIC",
+    "PNG_MAGIC",
+    "SUPPORTED_ALBUM_ART_MIME_TYPES",
     "SimpleAudioTag",
     "SimpleAudioTagEditor",
     "SimpleID3Tag",
@@ -60,6 +67,7 @@ __all__ = [
     "get_tag_editor",
     "parse_base64_encoded_data_uri",
     "read_tags",
+    "validate_album_art",
     "validate_track_or_disk_number",
     "validate_year",
 ]

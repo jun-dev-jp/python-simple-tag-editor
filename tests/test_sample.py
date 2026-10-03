@@ -299,10 +299,10 @@ def test_audio_tag_utilities() -> None:
     assert mime_parsed == "image/jpeg"
     assert len(b64_parsed) > 0
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidTagValueError):
         _ = parse_base64_encoded_data_uri("invalid_uri")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidTagValueError):
         _ = b64decode("invalid_uri")
 
 
@@ -630,3 +630,83 @@ def test_atomic_save_os_error_preserves_destination_and_cleans_up(
     assert dest_path.read_bytes() == original_content
     leftover_tmp_files = list(tmp_path.glob(".*.tmp")) + list(tmp_path.glob("*.tmp"))
     assert leftover_tmp_files == []
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    "invalid_album_art",
+    [
+        "not-a-data-uri",
+        "data:image/jpeg;base64",
+        "data:image/jpeg,notbase64",
+        "data:image/jpeg;base64,!!!",
+        "data:text/plain;base64,SGVsbG8=",
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        "data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=",
+        # Mismatched MIME: header is image/jpeg, but payload is PNG
+        "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        # Mismatched MIME: header is image/png, but payload is JPEG
+        "data:image/png;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+        # Corrupted payload with invalid base64 padding/characters
+        "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP====",
+    ],
+)
+def test_invalid_album_art_rejected(
+    sample_filename: str, invalid_album_art: str
+) -> None:
+    """Test that malformed Data URIs, invalid base64, unsupported MIME, or mismatched images raise InvalidTagValueError."""
+    sample_path = SAMPLE_DIR / sample_filename
+    editor = get_tag_editor(sample_path)
+    with pytest.raises(InvalidTagValueError):
+        editor.edit_album_art(invalid_album_art)
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+@pytest.mark.parametrize(
+    ("mime_type", "image_bytes"),
+    [
+        (
+            "image/jpeg",
+            # Minimal 1x1 JPEG bytes
+            b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.' \",#\x1c\x1c(7),01444\x1f'9=82<.342\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9",
+        ),
+        (
+            "image/png",
+            # Minimal 1x1 PNG bytes
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc`\x00\x00\x00\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82",
+        ),
+    ],
+)
+def test_valid_album_art_roundtrip(
+    sample_filename: str, mime_type: str, image_bytes: bytes, tmp_path: Path
+) -> None:
+    """Test that supported JPEG and PNG artwork round-trips with correct MIME type and bytes across formats."""
+    sample_path = SAMPLE_DIR / sample_filename
+    output_path = tmp_path / f"art_{sample_filename}"
+
+    data_uri = b64encode(mime_type, image_bytes)
+    editor = get_tag_editor(sample_path)
+    editor.edit_album_art(data_uri)
+    editor.save_to_file(output_path, overwrite=True)
+
+    read_back = read_tags(output_path)
+    assert read_back.album_art is not None
+    decoded = read_back.b64decode_album_art()
+    assert decoded is not None
+    read_mime, read_bytes = decoded
+    assert read_mime == mime_type
+    assert read_bytes == image_bytes
