@@ -1,6 +1,6 @@
 # python-simple-tag-editor
 
-[![CI](https://github.com/jun-dev-jp/numpy-ring-buffer/actions/workflows/ci.yml/badge.svg)](https://github.com/jun-dev-jp/numpy-ring-buffer/actions/workflows/ci.yml)
+[![CI](https://github.com/jun-dev-jp/python-simple-tag-editor/actions/workflows/tests.yml/badge.svg)](https://github.com/jun-dev-jp/python-simple-tag-editor/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
@@ -34,24 +34,21 @@ It provides a unified, intuitive API to read and edit metadata tags across **MP3
 ### Install from GitHub
 
 ```bash
-# Using uv (HTTPS or SSH)
-uv add git+https://github.com/junpiyo/python-simple-tag-editor.git
-# or
-uv add "git+ssh://git@github.com/junpiyo/python-simple-tag-editor.git"
+# Using uv
+uv add git+https://github.com/jun-dev-jp/python-simple-tag-editor.git
 
-# Using pip (HTTPS or SSH)
-pip install git+https://github.com/junpiyo/python-simple-tag-editor.git
-# or
-pip install "git+ssh://git@github.com/junpiyo/python-simple-tag-editor.git"
+# Using pip
+pip install git+https://github.com/jun-dev-jp/python-simple-tag-editor.git
+
 ```
 
 ### Local Development Setup
 
 ```bash
 # Clone the repository (HTTPS or SSH)
-git clone https://github.com/junpiyo/python-simple-tag-editor.git
+git clone https://github.com/jun-dev-jp/python-simple-tag-editor.git
 # or
-git clone git@github.com:junpiyo/python-simple-tag-editor.git
+git clone git@github.com:jun-dev-jp/python-simple-tag-editor.git
 
 cd python-simple-tag-editor
 
