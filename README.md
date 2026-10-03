@@ -1,7 +1,7 @@
 # python-simple-tag-editor
 
 [![CI](https://github.com/jun-dev-jp/python-simple-tag-editor/actions/workflows/tests.yml/badge.svg)](https://github.com/jun-dev-jp/python-simple-tag-editor/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
 
@@ -186,4 +186,4 @@ GitHub Actions runs these checks on pushes and pull requests for Python 3.12, 3.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+GNU General Public License v2 (GPL-2.0). See [LICENSE](LICENSE) for details.
