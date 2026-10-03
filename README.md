@@ -25,6 +25,7 @@ It provides a unified, intuitive API to read and edit metadata tags across **MP3
   - Lyrics (`lyrics`)
   - Album Artwork (`album_art` as base64 Data URI, with helper for decoding/encoding)
 - **Safe Error Handling**: Wraps low-level format and I/O errors into structured library exceptions.
+- **Atomic File Saves**: Saves to a temporary file before atomically replacing the destination, protecting existing and source files from corruption if writing fails.
 - **Type Annotated**: Fully typed with `py.typed` marker for static type checkers (Pyright, Mypy).
 
 ---

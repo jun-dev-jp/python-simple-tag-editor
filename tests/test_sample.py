@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from mutagen import File as MutagenFile
+from mutagen import MutagenError
 
 from python_simple_tag_editor import (
     SimpleAudioTag,
@@ -20,6 +21,7 @@ from python_simple_tag_editor.exceptions import (
     FileReadError,
     FileWriteError,
     InvalidTagValueError,
+    TagWriteError,
     UnsupportedAudioFormatError,
 )
 
@@ -470,3 +472,161 @@ def test_valid_year_formats_roundtrip(
 
     read_back = read_tags(output_path)
     assert read_back.year == valid_year
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+def test_atomic_save_success_and_temp_file_cleanup(
+    sample_filename: str, tmp_path: Path
+) -> None:
+    """Test that successful save atomically replaces destination and leaves no temp files."""
+    sample_path = SAMPLE_DIR / sample_filename
+    output_path = tmp_path / f"output_{sample_filename}"
+
+    editor = get_tag_editor(sample_path)
+    editor.edit_title("Atomic Title")
+    editor.save_to_file(output_path, overwrite=True)
+
+    read_back = read_tags(output_path)
+    assert read_back.title == "Atomic Title"
+    leftover_tmp_files = list(tmp_path.glob(".*.tmp")) + list(tmp_path.glob("*.tmp"))
+    assert leftover_tmp_files == []
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+def test_atomic_save_mutagen_failure_preserves_destination_and_cleans_up(
+    sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a Mutagen write failure leaves existing destination and source untouched and cleans up temp files."""
+    sample_path = SAMPLE_DIR / sample_filename
+    dest_path = tmp_path / f"dest_{sample_filename}"
+    original_content = b"ORIGINAL_DESTINATION_CONTENT_THAT_MUST_NOT_CHANGE"
+    dest_path.write_bytes(original_content)
+
+    editor = get_tag_editor(sample_path)
+    editor.edit_title("New Title That Fails")
+
+    def _failing_save(*_args: object, **_kwargs: object) -> None:
+        raise MutagenError("Simulated mutagen save failure")
+
+    monkeypatch.setattr(editor._audio, "save", _failing_save)
+
+    with pytest.raises(TagWriteError) as exc_info:
+        editor.save_to_file(dest_path, overwrite=True)
+
+    assert "Simulated mutagen save failure" in str(exc_info.value)
+    assert dest_path.read_bytes() == original_content
+    leftover_tmp_files = list(tmp_path.glob(".*.tmp")) + list(tmp_path.glob("*.tmp"))
+    assert leftover_tmp_files == []
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+def test_atomic_save_mutagen_failure_leaves_nonexistent_destination_absent(
+    sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a failure when saving to a new destination leaves no destination file or temp files."""
+    sample_path = SAMPLE_DIR / sample_filename
+    dest_path = tmp_path / f"new_{sample_filename}"
+
+    editor = get_tag_editor(sample_path)
+    editor.edit_title("New Title")
+
+    def _failing_save(*_args: object, **_kwargs: object) -> None:
+        raise MutagenError("Simulated mutagen save failure")
+
+    monkeypatch.setattr(editor._audio, "save", _failing_save)
+
+    with pytest.raises(TagWriteError):
+        editor.save_to_file(dest_path, overwrite=True)
+
+    assert not dest_path.exists()
+    leftover_tmp_files = list(tmp_path.glob(".*.tmp")) + list(tmp_path.glob("*.tmp"))
+    assert leftover_tmp_files == []
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+def test_atomic_save_inplace_failure_preserves_source_audio(
+    sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that in-place save failure preserves original source audio file and cleans up temp files."""
+    sample_path = SAMPLE_DIR / sample_filename
+    in_place_path = tmp_path / f"in_place_{sample_filename}"
+    shutil.copyfile(sample_path, in_place_path)
+    original_bytes = in_place_path.read_bytes()
+
+    editor = get_tag_editor(in_place_path)
+    editor.edit_title("In-place Edit That Fails")
+
+    def _failing_save(*_args: object, **_kwargs: object) -> None:
+        raise MutagenError("Simulated in-place save failure")
+
+    monkeypatch.setattr(editor._audio, "save", _failing_save)
+
+    with pytest.raises(TagWriteError):
+        editor.save_to_file(in_place_path, overwrite=True)
+
+    assert in_place_path.read_bytes() == original_bytes
+    leftover_tmp_files = list(tmp_path.glob(".*.tmp")) + list(tmp_path.glob("*.tmp"))
+    assert leftover_tmp_files == []
+
+
+@pytest.mark.parametrize(
+    "sample_filename",
+    [
+        "sample_01.mp3",
+        "sample_02.m4a",
+        "sample_03.aiff",
+    ],
+)
+def test_atomic_save_os_error_preserves_destination_and_cleans_up(
+    sample_filename: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that filesystem error during replace preserves destination and cleans up temp files."""
+    sample_path = SAMPLE_DIR / sample_filename
+    dest_path = tmp_path / f"os_err_{sample_filename}"
+    original_content = b"PROTECTED_CONTENT"
+    dest_path.write_bytes(original_content)
+
+    editor = get_tag_editor(sample_path)
+    editor.edit_title("Title")
+
+    import os
+
+    def _failing_replace(_src: object, _dst: object) -> None:
+        raise OSError("Simulated replace filesystem error")
+
+    monkeypatch.setattr(os, "replace", _failing_replace)
+
+    with pytest.raises(FileWriteError):
+        editor.save_to_file(dest_path, overwrite=True)
+
+    assert dest_path.read_bytes() == original_content
+    leftover_tmp_files = list(tmp_path.glob(".*.tmp")) + list(tmp_path.glob("*.tmp"))
+    assert leftover_tmp_files == []

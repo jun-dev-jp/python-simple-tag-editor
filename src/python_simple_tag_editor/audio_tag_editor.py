@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
+import tempfile
 from abc import ABC, abstractmethod
 from datetime import date, datetime
 from os import PathLike
@@ -144,13 +146,36 @@ class SimpleAudioTagEditor(ABC):
                 raise FileWriteError(f"Output file already exists: {path}")
             logger.debug(f"Overwriting existing output file: {path}")
 
+        tmp_path: Path | None = None
         try:
-            if source_path and Path(source_path).resolve() != path.resolve():
-                shutil.copyfile(source_path, path)
-            elif not path.exists():
-                path.touch()
+            dest_dir = path.parent
+            with tempfile.NamedTemporaryFile(
+                dir=dest_dir,
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as tmp_file:
+                tmp_path = Path(tmp_file.name)
 
-            self._audio.save(path)
+            if source_path:
+                shutil.copyfile(source_path, tmp_path)
+                try:
+                    if path.exists():
+                        shutil.copymode(path, tmp_path)
+                    else:
+                        shutil.copymode(source_path, tmp_path)
+                except OSError:
+                    pass
+            elif path.exists():
+                shutil.copyfile(path, tmp_path)
+                try:
+                    shutil.copymode(path, tmp_path)
+                except OSError:
+                    pass
+
+            self._audio.save(tmp_path)
+            os.replace(tmp_path, path)
+            tmp_path = None
         except (ID3Error, MP4Error, MutagenError) as e:
             logger.error(f"Failed to write tags to {path}: {e}")
             raise TagWriteError(f"Failed to write tags: {e}") from e
@@ -160,6 +185,12 @@ class SimpleAudioTagEditor(ABC):
         except Exception as e:
             logger.error(f"Unexpected error while writing tags to {path}: {e}")
             raise TagWriteError(f"Unexpected error: {e}") from e
+        finally:
+            if tmp_path is not None and tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass
 
     @abstractmethod
     def edit_title(self, new_title: str) -> None:
