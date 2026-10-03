@@ -182,9 +182,6 @@ class SimpleAudioTagEditor(ABC):
         except OSError as e:
             logger.error(f"File write error for {path}: {e}")
             raise FileWriteError(f"File write error: {e}") from e
-        except Exception as e:
-            logger.error(f"Unexpected error while writing tags to {path}: {e}")
-            raise TagWriteError(f"Unexpected error: {e}") from e
         finally:
             if tmp_path is not None and tmp_path.exists():
                 try:

@@ -8,9 +8,13 @@ from pathlib import Path
 import pytest
 from mutagen import File as MutagenFile
 from mutagen import MutagenError
+from mutagen.id3 import ID3Tags
+from mutagen.mp4 import MP4Tags
 
 from python_simple_tag_editor import (
     SimpleAudioTag,
+    SimpleID3Tag,
+    SimpleMP4Tag,
     b64decode,
     b64encode,
     get_tag_editor,
@@ -21,6 +25,7 @@ from python_simple_tag_editor.exceptions import (
     FileReadError,
     FileWriteError,
     InvalidTagValueError,
+    TagReadError,
     TagWriteError,
     UnsupportedAudioFormatError,
 )
@@ -710,3 +715,78 @@ def test_valid_album_art_roundtrip(
     read_mime, read_bytes = decoded
     assert read_mime == mime_type
     assert read_bytes == image_bytes
+
+
+def test_tag_read_error_wraps_mutagen_and_preserves_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that Mutagen errors during ID3/MP4 tag reading are wrapped as TagReadError with cause preserved."""
+
+    def mock_id3_mutagen_error(id3_tags: ID3Tags, tag_name: str) -> str | None:
+        raise MutagenError("Simulated Mutagen failure reading ID3")
+
+    monkeypatch.setattr(SimpleID3Tag, "_get_tag", staticmethod(mock_id3_mutagen_error))
+    with pytest.raises(TagReadError) as id3_exc_info:
+        SimpleID3Tag.from_ID3Tags(ID3Tags())
+    assert isinstance(id3_exc_info.value.__cause__, MutagenError)
+    assert "Simulated Mutagen failure" in str(id3_exc_info.value.__cause__)
+
+    def mock_mp4_mutagen_error(mp4_tags: MP4Tags, tag_name: str) -> str | None:
+        raise MutagenError("Simulated Mutagen failure reading MP4")
+
+    monkeypatch.setattr(SimpleMP4Tag, "_get_tag", staticmethod(mock_mp4_mutagen_error))
+    with pytest.raises(TagReadError) as mp4_exc_info:
+        SimpleMP4Tag.from_MP4Tags(MP4Tags())
+    assert isinstance(mp4_exc_info.value.__cause__, MutagenError)
+    assert "Simulated Mutagen failure" in str(mp4_exc_info.value.__cause__)
+
+
+def test_tag_read_unexpected_error_not_wrapped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that unexpected programming errors (e.g. TypeError, AttributeError) are not wrapped as TagReadError."""
+
+    def mock_type_error(*args: object, **kwargs: object) -> str | None:
+        raise TypeError("Unexpected programming bug")
+
+    monkeypatch.setattr(SimpleID3Tag, "_get_tag", staticmethod(mock_type_error))
+    with pytest.raises(TypeError, match="Unexpected programming bug"):
+        SimpleID3Tag.from_ID3Tags(ID3Tags())
+
+    monkeypatch.setattr(SimpleMP4Tag, "_get_tag", staticmethod(mock_type_error))
+    with pytest.raises(TypeError, match="Unexpected programming bug"):
+        SimpleMP4Tag.from_MP4Tags(MP4Tags())
+
+
+def test_tag_write_error_wraps_mutagen_and_preserves_cause(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Test that Mutagen errors during save_to_file are wrapped as TagWriteError with cause preserved."""
+    sample_path = SAMPLE_DIR / "sample_01.mp3"
+    editor = get_tag_editor(sample_path)
+    output_path = tmp_path / "output.mp3"
+
+    def mock_save_error(path: Path) -> None:
+        raise MutagenError("Simulated Mutagen failure saving tags")
+
+    monkeypatch.setattr(editor._audio, "save", mock_save_error)
+    with pytest.raises(TagWriteError) as exc_info:
+        editor.save_to_file(output_path)
+    assert isinstance(exc_info.value.__cause__, MutagenError)
+    assert "Simulated Mutagen failure" in str(exc_info.value.__cause__)
+
+
+def test_tag_write_unexpected_error_not_wrapped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Test that unexpected errors (e.g. ValueError, TypeError) during save_to_file are not wrapped as TagWriteError."""
+    sample_path = SAMPLE_DIR / "sample_01.mp3"
+    editor = get_tag_editor(sample_path)
+    output_path = tmp_path / "output.mp3"
+
+    def mock_unexpected_error(path: Path) -> None:
+        raise RuntimeError("Unexpected runtime bug")
+
+    monkeypatch.setattr(editor._audio, "save", mock_unexpected_error)
+    with pytest.raises(RuntimeError, match="Unexpected runtime bug"):
+        editor.save_to_file(output_path)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from mutagen import MutagenError
 from mutagen.mp4 import MP4Cover, MP4Tags
 from mutagen.mp4 import error as MP4Error
 
@@ -43,12 +44,9 @@ class SimpleMP4Tag(SimpleAudioTag):
             track_number = cls._get_track_number(mp4_tags)
             lyrics = cls._get_lyrics(mp4_tags)
             album_art = cls._get_album_art(mp4_tags)
-        except MP4Error as e:
-            logger.error(f"Mutagen MP4Error while reading tags: {e}")
-            raise TagReadError(f"Mutagen MP4Error: {e}") from e
-        except Exception as e:
-            logger.error(f"Unexpected error while reading MP4 tags: {e}")
-            raise TagReadError(f"Unexpected error: {e}") from e
+        except (MP4Error, MutagenError) as e:
+            logger.error(f"Mutagen error while reading MP4 tags: {e}")
+            raise TagReadError(f"Mutagen error: {e}") from e
 
         return cls(
             title=title,

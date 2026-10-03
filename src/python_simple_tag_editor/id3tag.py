@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from mutagen import MutagenError
 from mutagen.id3 import ID3Tags
 from mutagen.id3 import error as ID3Error
 
@@ -43,12 +44,9 @@ class SimpleID3Tag(SimpleAudioTag):
             track_number = cls._get_tag(id3_tags, "TRCK")
             lyrics = cls._get_lyrics(id3_tags)
             album_art = cls._get_album_art(id3_tags)
-        except ID3Error as e:
-            logger.error(f"Mutagen ID3Error while reading tags: {e}")
-            raise TagReadError(f"Mutagen ID3Error: {e}") from e
-        except Exception as e:
-            logger.error(f"Unexpected error while reading ID3 tags: {e}")
-            raise TagReadError(f"Unexpected error: {e}") from e
+        except (ID3Error, MutagenError) as e:
+            logger.error(f"Mutagen error while reading ID3 tags: {e}")
+            raise TagReadError(f"Mutagen error: {e}") from e
 
         return cls(
             title=title,
