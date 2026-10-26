@@ -33,6 +33,6 @@ This Python library reads and edits tags in MP3, MP4/M4A, and AIFF files using `
 - **Type Checking**: Use `pyright` and check for type errors with `uv run pyright`.
 - **Tests**: Run tests with `uv run pytest`. Add or update tests for related changes.
 - **Testing & Token Conservation Policy**:
-  - Run tests locally **only on Python 3.14** (`uv run pytest` or targeted tests). Do not test across multiple Python versions (e.g. 3.12, 3.13) locally without explicit prior user confirmation.
+  - Run tests locally **only on Python 3.14** (`uv run pytest` or targeted tests). Do not test across multiple Python versions (e.g. 3.12, 3.13, 3.15) locally without explicit prior user confirmation.
   - Multi-version and multi-OS matrix testing is delegated to GitHub Actions CI to avoid excessive token consumption.
   - Prefer focused, minimal test runs (e.g. `uv run pytest tests/test_xxx.py -q`) during iterative development.
