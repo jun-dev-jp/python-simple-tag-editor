@@ -1,5 +1,6 @@
 # python-simple-tag-editor
 
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue)](https://github.com/jun-dev-jp/python-simple-tag-editor/tags)
 [![CI](https://github.com/jun-dev-jp/python-simple-tag-editor/actions/workflows/tests.yml/badge.svg)](https://github.com/jun-dev-jp/python-simple-tag-editor/actions/workflows/tests.yml)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
@@ -30,31 +31,18 @@ It provides a unified, intuitive API to read and edit metadata tags across **MP3
 
 ---
 
-## Installation & Setup
+## Installation
 
-### Install from GitHub
+### Install from a Git tag
 
 ```bash
+# Current version: v0.2.0
 # Using uv
-uv add git+https://github.com/jun-dev-jp/python-simple-tag-editor.git
+uv add "python-simple-tag-editor @ git+https://github.com/jun-dev-jp/python-simple-tag-editor.git@v0.2.0"
 
 # Using pip
-pip install git+https://github.com/jun-dev-jp/python-simple-tag-editor.git
+pip install "python-simple-tag-editor @ git+https://github.com/jun-dev-jp/python-simple-tag-editor.git@v0.2.0"
 
-```
-
-### Local Development Setup
-
-```bash
-# Clone the repository (HTTPS or SSH)
-git clone https://github.com/jun-dev-jp/python-simple-tag-editor.git
-# or
-git clone git@github.com:jun-dev-jp/python-simple-tag-editor.git
-
-cd python-simple-tag-editor
-
-# Set up virtual environment and install dependencies with uv
-uv sync
 ```
 
 ---
@@ -142,9 +130,10 @@ editor.save_to_file("song_cleaned.aiff", overwrite=True)
 | **Opus** | `.opus` | Vorbis Comment | `METADATA_BLOCK_PICTURE` (RFC 7845 compliant base64 block) |
 
 ### Format-Specific Notes & Limitations
-- **WAV files**: Tagging uses the standard ID3v2 RIFF chunk. Legacy RIFF `INFO` chunks (such as `INAM`, `IART`) are not processed; modern media players (Apple Music, VLC, DAW software, DJ tools) read the ID3 chunk.
+- **WAV files**: Tagging uses the standard ID3v2 RIFF chunk. Legacy RIFF `INFO` chunks (such as `INAM`, `IART`) are not processed. In the current manual check, Apple Music played the WAV file but did not display its ID3 tags; player support for WAV metadata varies.
 - **FLAC & Opus files**: Track and disk totals are stored using standard `TRACKTOTAL` (or `TOTALTRACKS`) and `DISCTOTAL` (or `TOTALDISCS`) Vorbis comment keys.
 - **Opus files**: Album artwork is embedded inside the Vorbis comment packet as a base64-encoded `METADATA_BLOCK_PICTURE` structure according to RFC 7845.
+- **External player compatibility**: Automated tests verify tag read/write round-trips with Mutagen. Playback and tag display in external players have not been manually verified for FLAC and Opus.
 
 ---
 
