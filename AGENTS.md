@@ -27,10 +27,9 @@ This Python library reads and edits tags in MP3, MP4/M4A, and AIFF files using `
    - Use Pyright for static type checking, but do not omit necessary runtime validation, such as checking formats based on mutagen's return value.
 
 ## Development and Quality
-- **Type Hints**: Add type hints to all public APIs.
-- **Docstrings**: Add appropriate docstrings to functions and methods, especially public APIs.
+- **Static Type Checking**: Use Pyright (`uv run pyright`). Strictly adhere to PEP 561 by including `py.typed` and providing type annotations.
+- **Docstrings**: All public APIs (modules, classes, functions, and methods) must have Google-style docstrings, including applicable `Args`, `Returns`, and `Raises` sections.
 - **Linting and Formatting**: Use `ruff` to maintain code quality and formatting (`uv run ruff check` / `uv run ruff format`).
-- **Type Checking**: Use `pyright` and check for type errors with `uv run pyright`.
 - **Tests**: Run tests with `uv run pytest`. Add or update tests for related changes.
 - **Testing & Token Conservation Policy**:
   - Run tests locally **only on Python 3.14** (`uv run pytest` or targeted tests). Do not test across multiple Python versions (e.g. 3.12, 3.13, 3.15) locally without explicit prior user confirmation.

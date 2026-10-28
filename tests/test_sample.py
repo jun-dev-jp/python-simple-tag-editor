@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -64,81 +66,81 @@ ALL_SAMPLE_FILES: list[str] = [
     [
         (
             "sample_01.mp3",
-            "MP3サンプル",
-            "東進ブックス",
-            "TOEIC L&Rテスト上級英単語1500",
-            "2000",
-            "Books & Spoken",
-            "2/100",
-            "1/2",
-            "これはMP3のサンプルデータです。\nThis is a sample.",
+            "タイトル",
+            "アーティスト",
+            "アルバム",
+            "2026",
+            "サンプル",
+            "1/6",
+            "1/1",
+            "sample\nサンプル\nLyrics are embedded in the ID3 tag.",
             "image/jpeg",
-            103616,
+            18138,
         ),
         (
             "sample_02.m4a",
-            "M4Aサンプル",
-            "東進ブックス",
-            "TOEIC L&Rテスト上級英単語1500",
-            "2010",
-            "Books & Spoken",
-            "55/60",
+            "タイトル",
+            "アーティスト",
+            "アルバム",
+            "2026",
+            "サンプル",
+            "2/6",
             "1/1",
-            "これはM4Aのサンプルです。\nThis is a sample.",
-            "image/png",
-            503312,
+            "sample\nサンプル\nLyrics are embedded in the MP4 metadata.",
+            "image/jpeg",
+            18138,
         ),
         (
             "sample_03.aiff",
-            "AIFFサンプル",
-            "東進ブックス",
-            "TOEIC L&Rテスト上級英単語1500",
-            "1998",
-            "Books & Spoken",
-            "50",
-            "2",
-            None,
-            "image/jpeg",
-            103616,
+            "タイトル",
+            "アーティスト",
+            "アルバム",
+            "2026",
+            "サンプル",
+            "3/6",
+            "1/1",
+            "sample\nサンプル\nLyrics are embedded in the ID3 tag.",
+            "image/png",
+            11276,
         ),
         (
             "sample_04.flac",
-            "FLACサンプル",
-            "東進ブックス",
-            "TOEIC L&Rテスト上級英単語1500",
-            "2015",
-            "Books & Spoken",
-            "4/20",
+            "タイトル",
+            "アーティスト",
+            "アルバム",
+            "2026",
+            "サンプル",
+            "4/6",
             "1/1",
-            "これはFLACのサンプルです。\nThis is a sample.",
+            "sample\nサンプル\nLyrics are embedded in the Vorbis comments.",
             "image/jpeg",
-            103616,
+            18138,
         ),
         (
             "sample_05.opus",
-            "Opusサンプル",
-            "東進ブックス",
-            "TOEIC L&Rテスト上級英単語1500",
-            "2018",
-            "Books & Spoken",
-            "5/20",
+            "タイトル",
+            "アーティスト",
+            "アルバム",
+            "2026",
+            "サンプル",
+            "5/6",
             "1/1",
-            "これはOpusのサンプルです。\nThis is a sample.",
+            "sample\nサンプル\nLyrics are embedded in the Vorbis comments.",
             "image/jpeg",
-            103616,
+            18138,
         ),
         (
             "sample_06.wav",
-            "WAVサンプル",
-            "東進ブックス",
-            "TOEIC L&Rテスト上級英単語1500",
-            "1995",
-            "Books & Spoken",
-            "6",
-            "1",
-            "これはWAVのサンプルです。\nThis is a sample.",
-            "image/jpeg",
-            103616,
+            "タイトル",
+            "アーティスト",
+            "アルバム",
+            "2026",
+            "サンプル",
+            "6/6",
+            "1/1",
+            "sample\nサンプル\nLyrics are embedded in the ID3 tag.",
+            "image/png",
+            11276,
         ),
     ],
 )
@@ -209,6 +211,35 @@ def test_edit_and_save_sample_tags(sample_filename: str, tmp_path: Path) -> None
     assert updated_tags.disk_number == "1/1"
     assert updated_tags.lyrics == "更新された歌詞です。"
     assert updated_tags.album_art is not None
+
+
+def test_edit_tags_cli_requires_overwrite_flag(tmp_path: Path) -> None:
+    """Test that the example CLI protects existing output unless --overwrite is set."""
+    sample_path = SAMPLE_DIR / "sample_01.mp3"
+    output_path = tmp_path / "existing.mp3"
+    shutil.copyfile(sample_path, output_path)
+    original_bytes = output_path.read_bytes()
+    script_path = Path(__file__).parent.parent / "examples" / "edit_tags.py"
+    command = [
+        sys.executable,
+        str(script_path),
+        str(sample_path),
+        "--output",
+        str(output_path),
+        "--title",
+        "CLI overwrite test",
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert result.returncode == 1
+    assert "Output file already exists" in result.stderr
+    assert output_path.read_bytes() == original_bytes
+
+    result = subprocess.run(
+        [*command, "--overwrite"], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert read_tags(output_path).title == "CLI overwrite test"
 
 
 @pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
