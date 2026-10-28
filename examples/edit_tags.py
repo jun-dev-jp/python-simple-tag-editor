@@ -72,9 +72,9 @@ def main() -> int:
     _ = parser.add_argument(
         "--output",
         "-o",
-        help="Destination audio file path (defaults to the input file).",
+        help="Destination audio file path.",
         type=Path,
-        default=None,
+        required=True,
     )
     _ = parser.add_argument(
         "--overwrite",
@@ -99,7 +99,7 @@ def main() -> int:
 
     args = parser.parse_args()
     input_path = cast(Path, args.input_path)
-    output_path = cast(Path, args.output) if args.output is not None else input_path
+    output_path = cast(Path, args.output)
 
     try:
         editor = get_tag_editor(input_path)

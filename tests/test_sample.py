@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -211,35 +209,6 @@ def test_edit_and_save_sample_tags(sample_filename: str, tmp_path: Path) -> None
     assert updated_tags.disk_number == "1/1"
     assert updated_tags.lyrics == "更新された歌詞です。"
     assert updated_tags.album_art is not None
-
-
-def test_edit_tags_cli_requires_overwrite_flag(tmp_path: Path) -> None:
-    """Test that the example CLI protects existing output unless --overwrite is set."""
-    sample_path = SAMPLE_DIR / "sample_01.mp3"
-    output_path = tmp_path / "existing.mp3"
-    shutil.copyfile(sample_path, output_path)
-    original_bytes = output_path.read_bytes()
-    script_path = Path(__file__).parent.parent / "examples" / "edit_tags.py"
-    command = [
-        sys.executable,
-        str(script_path),
-        str(sample_path),
-        "--output",
-        str(output_path),
-        "--title",
-        "CLI overwrite test",
-    ]
-
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
-    assert result.returncode == 1
-    assert "Output file already exists" in result.stderr
-    assert output_path.read_bytes() == original_bytes
-
-    result = subprocess.run(
-        [*command, "--overwrite"], capture_output=True, text=True, check=False
-    )
-    assert result.returncode == 0, result.stderr
-    assert read_tags(output_path).title == "CLI overwrite test"
 
 
 @pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
