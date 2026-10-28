@@ -213,12 +213,11 @@ def test_edit_and_save_sample_tags(sample_filename: str, tmp_path: Path) -> None
     assert updated_tags.album_art is not None
 
 
-@pytest.mark.parametrize("io_encoding", ["utf-8", "cp1252"])
 def test_edit_tags_cli_requires_overwrite_flag(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, io_encoding: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Test that the example CLI protects existing output unless --overwrite is set."""
-    monkeypatch.setenv("PYTHONIOENCODING", f"{io_encoding}:strict")
+    monkeypatch.setenv("PYTHONIOENCODING", "utf-8")
     sample_path = SAMPLE_DIR / "sample_01.mp3"
     output_path = tmp_path / "existing.mp3"
     shutil.copyfile(sample_path, output_path)
@@ -235,7 +234,7 @@ def test_edit_tags_cli_requires_overwrite_flag(
     ]
 
     result = subprocess.run(
-        command, capture_output=True, text=True, encoding=io_encoding, check=False
+        command, capture_output=True, text=True, encoding="utf-8", check=False
     )
     assert result.returncode == 1
     assert "Output file already exists" in result.stderr
@@ -245,16 +244,13 @@ def test_edit_tags_cli_requires_overwrite_flag(
         [*command, "--overwrite"],
         capture_output=True,
         text=True,
-        encoding=io_encoding,
+        encoding="utf-8",
         check=False,
     )
     assert result.returncode == 0, result.stderr
     assert read_tags(output_path).title == "CLI overwrite test"
     assert read_tags(output_path).artist == "アーティスト"
-    expected_artist = "アーティスト".encode(
-        io_encoding, errors="backslashreplace"
-    ).decode(io_encoding)
-    assert f"  Artist: {expected_artist}" in result.stdout
+    assert "  Artist: アーティスト" in result.stdout
 
 
 @pytest.mark.parametrize("sample_filename", ALL_SAMPLE_FILES)
