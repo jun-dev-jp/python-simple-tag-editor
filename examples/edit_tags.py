@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from io import TextIOWrapper
 from pathlib import Path
 from typing import cast
 
@@ -65,6 +66,10 @@ def _read_album_art_as_data_uri(image_path: Path) -> str:
 
 def main() -> int:
     """Main entry point for the edit_tags example script."""
+    if isinstance(sys.stdout, TextIOWrapper):
+        # Redirected Windows output may use an encoding that cannot display tags.
+        sys.stdout.reconfigure(errors="backslashreplace")
+
     parser = argparse.ArgumentParser(
         description="Edit metadata tags in an audio file using python-simple-tag-editor."
     )
